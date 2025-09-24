@@ -1,0 +1,87 @@
+# .github/workflows/cd.yml
+name: CD - Deploy Application to AKS
+
+on:
+  workflow_run:
+    workflows: ["CI - Test, Build, and Push Images"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy_backend:
+    name: Deploy Backend to AKS
+    runs-on: ubuntu-latest
+    environment: Production
+    outputs:
+      product_api_ip: ${{ steps.get_ips.outputs.product_ip }}
+      order_api_ip: ${{ steps.get_ips.outputs.order_ip }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Azure Login
+        uses: azure/login@v1
+        with: { creds: ${{ secrets.AZURE_CREDENTIALS }} }
+      - name: Set Kubernetes context
+        run: |
+          az aks get-credentials --resource-group KubernetesCluster17_group --name KubernetesCluster17 --overwrite-existing
+      - name: Deploy Backend Infrastructure and Services
+        run: |
+          cd k8s/
+          kubectl apply -f configmaps.yaml
+          kubectl apply -f secrets.yaml
+          kubectl apply -f product-db.yaml
+          kubectl apply -f order-db.yaml
+          kubectl apply -f product-service.yaml
+          kubectl apply -f order-service.yaml
+      - name: Wait for Backend LoadBalancer IPs
+        id: get_ips
+        run: |
+          echo "Waiting for LoadBalancer IPs..."
+          for i in $(seq 1 60); do
+            PRODUCT_IP=$(kubectl get service product-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
+            ORDER_IP=$(kubectl get service order-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
+            if [[ -n "$PRODUCT_IP" && -n "$ORDER_IP" ]]; then
+              echo "IPs assigned: Product ($PRODUCT_IP), Order ($ORDER_IP)"
+              echo "product_ip=${PRODUCT_IP}" >> $GITHUB_OUTPUT
+              echo "order_ip=${ORDER_IP}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "Attempt $i/60: Waiting for IPs..."
+            sleep 5
+          done
+          echo "Error: Timed out waiting for IPs."
+          exit 1
+
+  deploy_frontend:
+    name: Deploy Frontend to AKS
+    runs-on: ubuntu-latest
+    environment: Production
+    needs: deploy_backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Azure Login
+        uses: azure/login@v1
+        with: { creds: ${{ secrets.AZURE_CREDENTIALS }} }
+      - name: Inject Backend IPs and Re-build Frontend
+        run: |
+          PRODUCT_URL="http://${{ needs.deploy_backend.outputs.product_api_ip }}:8000"
+          ORDER_URL="http://${{ needs.deploy_backend.outputs.order_api_ip }}:8001"
+          echo "Injecting IPs -> Product: $PRODUCT_URL, Order: $ORDER_URL"
+          sed -i "s|_PRODUCT_API_URL_|$PRODUCT_URL|g" frontend/static/js/main.js
+          sed -i "s|_ORDER_API_URL_|$ORDER_URL|g" frontend/static/js/main.js
+          echo "Re-building and pushing frontend with 'latest' tag for deployment..."
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:latest ./frontend/
+          docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:latest
+      - name: Set Kubernetes context
+        run: |
+          az aks get-credentials --resource-group KubernetesCluster17_group --name KubernetesCluster17 --overwrite-existing
+      - name: Deploy Frontend to AKS
+        run: |
+          kubectl apply -f k8s/frontend.yaml
+      - name: Logout from Azure
+        run: az logout
+        if: always()
