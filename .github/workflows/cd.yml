@@ -45,8 +45,8 @@ jobs:
         run: |
           echo "Waiting for LoadBalancer IPs..."
           for i in $(seq 1 60); do
-            PRODUCT_IP=$(kubectl get service product-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
-            ORDER_IP=$(kubectl get service order-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
+            PRODUCT_IP=$(kubectl get service product-service-w08e1 -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
+            ORDER_IP=$(kubectl get service order-service-w08e1 -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
             if [[ -n "$PRODUCT_IP" && -n "$ORDER_IP" ]]; then
               echo "IPs assigned: Product ($PRODUCT_IP), Order ($ORDER_IP)"
               echo "product_ip=${PRODUCT_IP}" >> $GITHUB_OUTPUT
