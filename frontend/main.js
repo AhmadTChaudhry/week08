@@ -7,10 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // const PRODUCT_API_BASE_URL = 'http://20.188.216.248:8000';
     // const ORDER_API_BASE_URL = 'http://20.227.118.244:8001';
 
-    // Product Service is named 'product-service-w04e2' and exposes port 8000 internally.
-    const PRODUCT_API_BASE_URL = 'http://product-service-w08e1:8000';
-    // Order Service is named 'order-service-w04e2' and exposes port 8001 internally.
-    const ORDER_API_BASE_URL = 'http://order-service-w08e1:8001';
+    // These are placeholder variables.
+    // The CI/CD pipeline will replace them with the real public IP addresses during deployment.
+    const PRODUCT_API_BASE_URL = '_PRODUCT_API_URL_';
+    const ORDER_API_BASE_URL = '_ORDER_API_URL_';
 
     // DOM Elements
     const messageBox = document.getElementById('message-box');
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
             const products = await response.json();
-            
+
             productListDiv.innerHTML = ''; // Clear previous content
             productsCache = {}; // Clear existing cache
 
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 productsCache[product.product_id] = product; // Cache product details
                 const productCard = document.createElement('div');
                 productCard.className = 'product-card';
-                
+
                 // console.log(`Product ID: ${product.product_id}, Image URL received:`, product.image_url); // Diagnostic log from previous iteration
 
                 productCard.innerHTML = `
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const productId = event.target.dataset.id;
             const productName = event.target.dataset.name;
             const productPrice = parseFloat(event.target.dataset.price);
-            
+
             addToCart(productId, productName, productPrice);
         }
 
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const placedOrder = await response.json();
             showMessage(`Order ${placedOrder.order_id} placed successfully! Total: ${formatCurrency(placedOrder.total_amount)}`, 'success');
-            
+
             cart = []; // Clear cart after successful order
             updateCartDisplay();
             placeOrderForm.reset(); // Clear form
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
             const orders = await response.json();
-            
+
             orderListDiv.innerHTML = ''; // Clear previous content
 
             if (orders.length === 0) {
