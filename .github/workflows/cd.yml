@@ -78,8 +78,8 @@ jobs:
           PRODUCT_URL="http://${{ needs.deploy_backend.outputs.product_api_ip }}:8000"
           ORDER_URL="http://${{ needs.deploy_backend.outputs.order_api_ip }}:8001"
           echo "Injecting IPs -> Product: $PRODUCT_URL, Order: $ORDER_URL"
-          sed -i "s|_PRODUCT_API_URL_|$PRODUCT_URL|g" frontend/static/js/main.js
-          sed -i "s|_ORDER_API_URL_|$ORDER_URL|g" frontend/static/js/main.js
+          sed -i "s|_PRODUCT_API_URL_|$PRODUCT_URL|g" frontend/main.js
+          sed -i "s|_ORDER_API_URL_|$ORDER_URL|g" frontend/main.js
           echo "Re-building and pushing frontend with 'latest' tag for deployment..."
           az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:latest ./frontend/
