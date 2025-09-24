@@ -22,7 +22,6 @@ jobs:
 
       - name: Azure Login
         uses: azure/login@v1
-        # CORRECTED SYNTAX (this was line 24)
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
